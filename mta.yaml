@@ -1,26 +1,77 @@
----
-_schema-version: '3.1'
+_schema-version: "3.1"
 ID: pccap
+description: A simple CAP project.
 version: 1.0.0
-description: "A simple CAP project."
+modules:
+- name: pccap-srv
+  type: nodejs
+  path: gen/srv
+  provides:
+  - name: srv-api
+    properties:
+      srv-url: ${default-url}
+  parameters:
+    buildpack: nodejs_buildpack
+  build-parameters:
+    builder: npm
+- name: pccap-destination-content
+  type: com.sap.application.content
+  requires:
+  - name: pccap-destination-service
+    parameters:
+      content-target: true
+  - name: pccap_html_repo_host
+    parameters:
+      service-key:
+        name: pccap_html_repo_host-key
+  - name: uaa_pccap
+    parameters:
+      service-key:
+        name: uaa_pccap-key
+  parameters:
+    content:
+      instance:
+        destinations:
+        - Name: pccap_pccap_html_repo_host
+          ServiceInstanceName: pccap-html5-app-host-service
+          ServiceKeyName: pccap_html_repo_host-key
+          sap.cloud.service: pccap
+        - Authentication: OAuth2UserTokenExchange
+          Name: pccap_uaa_pccap
+          ServiceInstanceName: pccap-xsuaa-service
+          ServiceKeyName: uaa_pccap-key
+          sap.cloud.service: pccap
+        existing_destinations_policy: ignore
+  build-parameters:
+    no-source: true
+resources:
+- name: pccap-destination-service
+  type: org.cloudfoundry.managed-service
+  parameters:
+    config:
+      HTML5Runtime_enabled: true
+      version: 1.0.0
+    service: destination
+    service-name: pccap-destination-service
+    service-plan: lite
+- name: pccap_html_repo_host
+  type: org.cloudfoundry.managed-service
+  parameters:
+    service: html5-apps-repo
+    service-name: pccap-html5-app-host-service
+    service-plan: app-host
+- name: uaa_pccap
+  type: org.cloudfoundry.managed-service
+  parameters:
+    path: ./xs-security.json
+    service: xsuaa
+    service-name: pccap-xsuaa-service
+    service-plan: application
 parameters:
   enable-parallel-deployments: true
 build-parameters:
   before-all:
-    - builder: custom
-      commands:
-        - npm ci
-        - npx cds build --production
-modules:
-  - name: pccap-srv
-    type: nodejs
-    path: gen/srv
-    parameters:
-      buildpack: nodejs_buildpack
-    build-parameters:
-      builder: npm
-    provides:
-      - name: srv-api # required by consumers of CAP services (e.g. approuter)
-        properties:
-          srv-url: ${default-url}
-    requires: []
+  - builder: custom
+    commands:
+    - npm ci
+    - npx cds build --production
