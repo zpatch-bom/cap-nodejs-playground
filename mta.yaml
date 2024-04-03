@@ -6,6 +6,9 @@ modules:
   - name: pccap-srv
     type: nodejs
     path: gen/srv
+    requires:
+      - name: pccap-auth
+      - name: hdi_db
     provides:
       - name: srv-api
         properties:
@@ -14,9 +17,6 @@ modules:
       buildpack: nodejs_buildpack
     build-parameters:
       builder: npm
-    requires:
-      - name: pccap-auth
-      - name: uaa_pccap
   - name: pccap-destination-content
     type: com.sap.application.content
     requires:
@@ -27,10 +27,10 @@ modules:
         parameters:
           service-key:
             name: pccap_html_repo_host-key
-      - name: uaa_pccap
+      - name: pccap-auth
         parameters:
           service-key:
-            name: uaa_pccap-key
+            name: pccap-auth-key
     parameters:
       content:
         instance:
@@ -47,6 +47,13 @@ modules:
           existing_destinations_policy: ignore
     build-parameters:
       no-source: true
+  - name: db
+    type: hdb
+    path: db
+    requires:
+      - name: hdi_db
+    parameters:
+      buildpack: nodejs_buildpack
 resources:
   - name: pccap-destination-service
     type: org.cloudfoundry.managed-service
@@ -63,16 +70,25 @@ resources:
       service: html5-apps-repo
       service-name: pccap-html5-app-host-service
       service-plan: app-host
-  - name: uaa_pccap
+  - name: pccap-auth
     type: org.cloudfoundry.managed-service
     parameters:
+      config:
+        tenant-mode: dedicated
+        xsappname: pccap-${org}-${space}
       path: ./xs-security.json
       service: xsuaa
       service-name: pccap-xsuaa-service
       service-plan: application
+  - name: hdi_db
+    type: com.sap.xs.hdi-container
+    parameters:
       config:
-        xsappname: pccap-${org}-${space}
-        tenant-mode: dedicated
+        schema: myorg
+      service: hana
+      service-plan: hdi-shared
+    properties:
+      hdi-container-name: ${service-name}
 parameters:
   enable-parallel-deployments: true
 build-parameters:
